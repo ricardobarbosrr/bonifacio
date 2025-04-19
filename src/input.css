@@ -1,0 +1,19 @@
+/* Tailwind base styles */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Custom styles */
+@layer components {
+  .custom-button {
+    @apply bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-4 rounded transition-colors duration-200;
+  }
+
+  .custom-input {
+    @apply border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200;
+  }
+
+  .custom-link {
+    @apply text-green-700 hover:text-green-800 underline transition-colors duration-200;
+  }
+}

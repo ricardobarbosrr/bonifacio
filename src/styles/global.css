@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html {
+    @apply transition-colors duration-300;
+  }
+
+  body {
+    @apply bg-gray-100 text-gray-900 transition-colors duration-300;
+  }
+
+  .dark body {
+    @apply bg-gray-900 text-white;
+  }
+
+  /* Transições suaves para elementos comuns */
+  a, button, input, select, textarea, div {
+    @apply transition-colors duration-200;
+  }
+
+  /* Estilização personalizada do scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600;
+  }
+
+  /* Melhorias para o modo escuro */
+  .dark input, 
+  .dark textarea, 
+  .dark select {
+    @apply bg-gray-800 border-gray-700 text-white;
+  }
+
+  .dark input::placeholder, 
+  .dark textarea::placeholder {
+    @apply text-gray-400;
+  }
+
+  .dark button:not([class*="bg-"]) {
+    @apply bg-gray-700 text-white hover:bg-gray-600;
+  }
+}
+
+/* Classes utilitárias personalizadas */
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+}

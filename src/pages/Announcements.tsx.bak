@@ -1,0 +1,431 @@
+import React, { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAnnouncements } from '../contexts/AnnouncementContext';
+import { useAuth } from '../contexts/AuthContext';
+import { FaPlus, FaEdit, FaTrash, FaBell, FaCheck } from 'react-icons/fa';
+
+interface AnnouncementFormData {
+  id?: string;
+  title: string;
+  content: string;
+  important: boolean;
+  backgroundColor?: string;
+  textColor?: string;
+}
+
+const Announcements: React.FC = () => {
+  const { isDarkMode } = useTheme();
+  const { currentUser, isAdmin } = useAuth();
+  const { announcements, addAnnouncement, updateAnnouncement, deleteAnnouncement, markAsRead, loading } = useAnnouncements();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementFormData>({
+    title: '',
+    content: '',
+    important: false,
+    backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+    textColor: isDarkMode ? '#f3f4f6' : '#000000'
+  });
+  
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const colorOptions = [
+    { bg: '#ffffff', text: '#000000', name: 'Branco' },
+    { bg: '#f3f4f6', text: '#111827', name: 'Cinza Claro' },
+    { bg: '#fee2e2', text: '#991b1b', name: 'Vermelho Claro' },
+    { bg: '#fef3c7', text: '#92400e', name: 'Amarelo Claro' },
+    { bg: '#dcfce7', text: '#166534', name: 'Verde Claro' },
+    { bg: '#dbeafe', text: '#1e40af', name: 'Azul Claro' },
+    { bg: '#f3e8ff', text: '#6b21a8', name: 'Roxo Claro' },
+    { bg: '#ffe4e6', text: '#9f1239', name: 'Rosa Claro' },
+    // Cores escuras para modo dark
+    { bg: '#1f2937', text: '#f3f4f6', name: 'Cinza Escuro' },
+    { bg: '#991b1b', text: '#fee2e2', name: 'Vermelho Escuro' },
+    { bg: '#92400e', text: '#fef3c7', name: 'Amarelo Escuro' },
+    { bg: '#166534', text: '#dcfce7', name: 'Verde Escuro' }
+  ];
+
+  // Função para limpar mensagens após um tempo
+  const clearMessages = () => {
+    setTimeout(() => {
+      setErrorMessage(null);
+      setSuccessMessage(null);
+    }, 5000);
+  };
+
+  useEffect(() => {
+    // Marcar anúncios como lidos automaticamente ao visualizar
+    announcements.forEach(announcement => {
+      if (currentUser && !announcement.readBy.includes(currentUser.uid)) {
+        markAsRead(announcement.id);
+      }
+    });
+  }, [announcements, currentUser, markAsRead]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingAnnouncement.title.trim() || !editingAnnouncement.content.trim()) {
+      setErrorMessage('Título e conteúdo são obrigatórios');
+      clearMessages();
+      return;
+    }
+    
+    try {
+      setErrorMessage(null);
+      
+      if (isEditing && editingAnnouncement.id) {
+        await updateAnnouncement(editingAnnouncement.id, editingAnnouncement);
+        setSuccessMessage('Anúncio atualizado com sucesso!');
+      } else {
+        await addAnnouncement(editingAnnouncement);
+        setSuccessMessage('Anúncio criado com sucesso!');
+      }
+      
+      setIsEditing(false);
+      setEditingAnnouncement({
+        title: '',
+        content: '',
+        important: false,
+        backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+        textColor: isDarkMode ? '#f3f4f6' : '#000000'
+      });
+      
+      clearMessages();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Erro ao salvar anúncio');
+      console.error('Erro ao salvar anúncio:', err);
+      clearMessages();
+    }
+  };
+
+  const handleEdit = (announcement: any) => {
+    setEditingAnnouncement({
+      id: announcement.id,
+      title: announcement.title,
+      content: announcement.content,
+      important: announcement.important,
+      backgroundColor: announcement.backgroundColor || (isDarkMode ? '#1f2937' : '#ffffff'),
+      textColor: announcement.textColor || (isDarkMode ? '#f3f4f6' : '#000000')
+    });
+    setIsEditing(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este anúncio?')) {
+      try {
+        await deleteAnnouncement(id);
+        setSuccessMessage('Anúncio excluído com sucesso!');
+        clearMessages();
+      } catch (err: any) {
+        setErrorMessage(err.message || 'Erro ao excluir anúncio');
+        console.error('Erro ao excluir anúncio:', err);
+        clearMessages();
+      }
+    }
+  };
+
+  return (
+    <div className={`p-6 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+      <div className="max-w-5xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Anúncios</h1>
+          {isAdmin && !isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <FaPlus />
+              <span>Novo Anúncio</span>
+            </button>
+          )}
+        </div>
+        
+        {errorMessage && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative">
+            <span className="block sm:inline">{errorMessage}</span>
+          </div>
+        )}
+        
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 relative">
+            <span className="block sm:inline">{successMessage}</span>
+          </div>
+        )}
+
+        {isEditing && isAdmin && (
+          <div className={`mb-6 rounded-lg shadow p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className="text-xl font-semibold mb-4">
+              {editingAnnouncement.id ? 'Editar Anúncio' : 'Novo Anúncio'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Título</label>
+                <input
+                  type="text"
+                  value={editingAnnouncement.title}
+                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  placeholder="Título do anúncio"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Conteúdo</label>
+                <textarea
+                  value={editingAnnouncement.content}
+                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, content: e.target.value })}
+                  rows={5}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  placeholder="Conteúdo do anúncio"
+                />
+              </div>
+              
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="important"
+                  checked={editingAnnouncement.important}
+                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, important: e.target.checked })}
+                  className="mr-2"
+                />
+                <label htmlFor="important" className="text-sm font-medium">Anúncio importante</label>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Cores</label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {colorOptions.map((color, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setEditingAnnouncement({
+                        ...editingAnnouncement,
+                        backgroundColor: color.bg,
+                        textColor: color.text
+                      })}
+                      className={`p-2 rounded-md border ${
+                        editingAnnouncement.backgroundColor === color.bg && editingAnnouncement.textColor === color.text
+                          ? 'ring-2 ring-blue-500'
+                          : ''
+                      }`}
+                      style={{
+                        backgroundColor: color.bg,
+                        color: color.text,
+                        borderColor: isDarkMode ? '#4B5563' : '#E5E7EB'
+                      }}
+                    >
+                      {color.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Prévia</label>
+                <div 
+                  className="p-4 rounded-md"
+                  style={{
+                    backgroundColor: editingAnnouncement.backgroundColor,
+                    color: editingAnnouncement.textColor
+                  }}
+                >
+                  <h3 className="font-bold text-lg">{editingAnnouncement.title || 'Título do anúncio'}</h3>
+                  <p className="whitespace-pre-wrap">{editingAnnouncement.content || 'Conteúdo do anúncio...'}</p>
+                </div>
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditingAnnouncement({
+                      title: '',
+                      content: '',
+                      important: false,
+                      backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+                      textColor: isDarkMode ? '#f3f4f6' : '#000000'
+                    });
+                  }}
+                  className={`px-4 py-2 rounded-md ${
+                    isDarkMode 
+                      ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  }`}
+                >
+                  Cancelar
+                </button>
+                
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-md ${
+                    loading
+                      ? 'bg-blue-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+                >
+                  {loading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Salvando...
+                    </span>
+                  ) : (
+                    <span>Salvar</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+            </div>
+          ) : announcements.length === 0 ? (
+            <div className={`p-6 rounded-lg shadow text-center ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <FaBell className="mx-auto text-4xl mb-2 text-gray-400" />
+              <p>Nenhum anúncio disponível no momento.</p>
+            </div>
+          ) : (
+            <>
+              {/* Anúncios importantes */}
+              {announcements.filter(a => a.important).length > 0 && (
+                <div>
+                  <h2 className={`text-xl font-semibold mb-3 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-600'}`}>
+                    Anúncios Importantes
+                  </h2>
+                  {announcements
+                    .filter(a => a.important)
+                    .map(announcement => (
+                      <div
+                        key={announcement.id}
+                        className="mb-4 rounded-lg shadow relative overflow-hidden"
+                        style={{
+                          backgroundColor: announcement.backgroundColor || (isDarkMode ? '#1f2937' : '#ffffff'),
+                          color: announcement.textColor || (isDarkMode ? '#f3f4f6' : '#000000')
+                        }}
+                      >
+                        <div className="p-4">
+                          <div className="flex justify-between">
+                            <h3 className="font-bold text-lg mb-2">{announcement.title}</h3>
+                            
+                            {isAdmin && (
+                              <div className="flex space-x-1">
+                                <button
+                                  onClick={() => handleEdit(announcement)}
+                                  className="p-1 rounded hover:bg-opacity-10 hover:bg-black"
+                                  title="Editar"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(announcement.id)}
+                                  className="p-1 rounded hover:bg-opacity-10 hover:bg-black"
+                                  title="Excluir"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="whitespace-pre-wrap">{announcement.content}</div>
+                          
+                          <div className="mt-3 text-sm opacity-70 flex items-center">
+                            {currentUser && announcement.readBy.includes(currentUser.uid) && (
+                              <span className="flex items-center mr-3">
+                                <FaCheck className="mr-1" /> Lido
+                              </span>
+                            )}
+                            <span>
+                              {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+              
+              {/* Anúncios regulares */}
+              <div>
+                <h2 className={`text-xl font-semibold mb-3 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>
+                  Anúncios
+                </h2>
+                {announcements
+                  .filter(a => !a.important)
+                  .map(announcement => (
+                    <div
+                      key={announcement.id}
+                      className="mb-4 rounded-lg shadow relative overflow-hidden"
+                      style={{
+                        backgroundColor: announcement.backgroundColor || (isDarkMode ? '#1f2937' : '#ffffff'),
+                        color: announcement.textColor || (isDarkMode ? '#f3f4f6' : '#000000')
+                      }}
+                    >
+                      <div className="p-4">
+                        <div className="flex justify-between">
+                          <h3 className="font-bold text-lg mb-2">{announcement.title}</h3>
+                          
+                          {isAdmin && (
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => handleEdit(announcement)}
+                                className="p-1 rounded hover:bg-opacity-10 hover:bg-black"
+                                title="Editar"
+                              >
+                                <FaEdit />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(announcement.id)}
+                                className="p-1 rounded hover:bg-opacity-10 hover:bg-black"
+                                title="Excluir"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="whitespace-pre-wrap">{announcement.content}</div>
+                        
+                        <div className="mt-3 text-sm opacity-70 flex items-center">
+                          {currentUser && announcement.readBy.includes(currentUser.uid) && (
+                            <span className="flex items-center mr-3">
+                              <FaCheck className="mr-1" /> Lido
+                            </span>
+                          )}
+                          <span>
+                            {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Announcements;
