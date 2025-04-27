@@ -22,7 +22,7 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users.php`, {
+        const response = await fetch(`http://localhost:8000/proxy.php?file=users`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           },

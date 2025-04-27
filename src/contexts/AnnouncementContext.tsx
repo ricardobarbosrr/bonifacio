@@ -34,14 +34,17 @@ export const AnnouncementProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const fetchAnnouncements = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/announcements.php`);
+        const response = await fetch(`http://localhost:8000/proxy.php?file=announcements`);
         
         if (response.ok) {
           const data = await response.json();
           if (Array.isArray(data)) {
+            // Normalizar os dados para garantir propriedades esperadas
             const announcementsWithDates = data.map((item: any) => ({
               ...item,
-              createdAt: new Date(item.createdAt || item.created_at)
+              createdAt: new Date(item.createdAt || item.created_at || Date.now()),
+              // Garantir que a propriedade readBy sempre exista
+              readBy: item.readBy || []
             }));
             setAnnouncements(announcementsWithDates);
           } else {

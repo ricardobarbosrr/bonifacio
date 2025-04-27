@@ -1,0 +1,25 @@
+[
+    {
+        "id": "admin123456789",
+        "email": "admin@bonifacio.com",
+        "password": "$2y$10$NOn4AZN8HWqCZDuQk0G2IeOBJO5LZzsoVKQEJMrteGOV9q5WmF1d6",
+        "display_name": "Administrador",
+        "photo_url": null,
+        "is_admin": true,
+        "is_founder": true,
+        "created_at": "2025-04-27 13:00:00"
+    },
+    {
+        "id": "b0d9ea2b432cedef",
+        "email": "admin1@bonifacio.com",
+        "password": "$2y$10$fBir6IGzM6KB1cKYxKoKvO49wow89O7V2X1CcI09IQdLkoKBogf8O",
+        "display_name": "teste",
+        "photo_url": null,
+        "is_admin": true,
+        "is_founder": true,
+        "auth_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiMGQ5ZWEyYjQzMmNlZGVmIiwiaWF0IjoxNzQ1Nzg4MTY4LCJleHAiOjE3NDYzOTI5NjgsImRhdGEiOnsiZW1haWwiOiJhZG1pbjFAYm9uaWZhY2lvLmNvbSIsImRpc3BsYXlOYW1lIjoidGVzdGUifX0.7s0Nngalogp_FVWUS5TGWuYHq51T5ZjwTTbRKswGx7k",
+        "created_at": "2025-04-27 17:58:23",
+        "last_login": "2025-04-27 21:09:28",
+        "updated_at": "2025-04-27 17:59:04"
+    }
+]

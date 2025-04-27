@@ -31,7 +31,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Usando API em vez do Firebase
     const fetchNotifications = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/notifications.php`, {
+        const response = await fetch(`http://localhost:8000/proxy.php?file=notifications`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           },

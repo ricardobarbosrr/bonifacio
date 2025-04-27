@@ -1,0 +1,30 @@
+[
+  {
+    "id": "anuncio1",
+    "title": "Anúncio Importante",
+    "content": "Este é um anúncio importante para todos os usuários do portal.",
+    "author_id": "admin123456789",
+    "author_name": "Administrador",
+    "author_photo": null,
+    "type": "geral",
+    "important": true,
+    "created_at": "2025-04-27 13:30:00",
+    "updated_at": null,
+    "expires_at": null,
+    "readBy": []
+  },
+  {
+    "id": "anuncio2",
+    "title": "Manutenção Programada",
+    "content": "Informamos que o portal estará em manutenção no próximo final de semana para melhorias.",
+    "author_id": "admin123456789",
+    "author_name": "Administrador",
+    "author_photo": null,
+    "type": "sistema",
+    "important": true,
+    "created_at": "2025-04-27 14:00:00",
+    "updated_at": null,
+    "expires_at": null,
+    "readBy": []
+  }
+]

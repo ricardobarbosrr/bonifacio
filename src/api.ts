@@ -1,5 +1,6 @@
 // Configuração da API
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://corpbonifacio.com.br/api';
+// Versão adaptada para backend JSON
 
 // Função para obter o token de autenticação
 const getAuthToken = () => localStorage.getItem('authToken');
@@ -21,9 +22,13 @@ const createHeaders = (contentType = 'application/json') => {
 // Função para fazer requisições à API
 const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const defaultOptions: RequestInit = {
-    credentials: 'include',
     headers: createHeaders()
   };
+  
+  // Apenas adicionar credentials quando realmente necessitar de cookies
+  if (endpoint.includes('/auth/')) {
+    defaultOptions.credentials = 'include';
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -124,7 +129,7 @@ export interface Comment {
 export const auth = {
   // Registrar um novo usuário
   async register(email: string, password: string, displayName: string): Promise<User> {
-    const response = await fetchApi('/auth.php?action=register', {
+    const response = await fetchApi('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, displayName })
     });
@@ -140,7 +145,7 @@ export const auth = {
   
   // Login de usuário
   async login(email: string, password: string): Promise<User> {
-    const response = await fetchApi('/auth.php?action=login', {
+    const response = await fetchApi('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
@@ -163,20 +168,61 @@ export const auth = {
     }
     
     try {
-      const response = await fetchApi('/auth.php?action=current');
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('401')) {
-        localStorage.removeItem('authToken');
-        return null;
+      // Usar uma abordagem direta para carregar os dados do usuário autenticado
+      const response = await fetch(`http://localhost:8000/proxy.php?file=users`);
+      if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
       }
-      throw error;
+      
+      const allUsers = await response.json();
+      
+      // Decodificar o token JWT (parte simples sem verificação de assinatura)
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        throw new Error('Token inválido');
+      }
+      
+      // Decodificar a parte de payload do token (segunda parte)
+      const payload = JSON.parse(atob(tokenParts[1]));
+      console.log('Payload do token JWT:', payload); // Para depuração
+      
+      // O ID do usuário está no campo 'sub' do JWT
+      const userId = payload.sub;
+      
+      // Encontrar o usuário correspondente ao ID no token
+      const currentUser = allUsers.find((user: any) => user.id === userId);
+      
+      if (!currentUser) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      // Mapear dados do usuário para o formato esperado
+      return {
+        uid: currentUser.id,
+        email: currentUser.email,
+        displayName: currentUser.display_name || currentUser.username || 'Usuário',
+        isAdmin: Boolean(currentUser.is_admin),
+        isFounder: Boolean(currentUser.is_founder),
+        photoURL: currentUser.photo_url || null
+      };
+    } catch (error) {
+      console.error('Erro na autenticação:', error);
+      localStorage.removeItem('authToken');
+      return null;
     }
   },
   
   // Logout
-  logout(): void {
-    localStorage.removeItem('authToken');
+  async logout(): Promise<void> {
+    try {
+      await fetchApi('/auth/logout', {
+        method: 'POST'
+      });
+    } catch (e) {
+      console.error('Erro ao fazer logout no servidor:', e);
+    } finally {
+      localStorage.removeItem('authToken');
+    }
   }
 };
 
@@ -215,99 +261,55 @@ export const upload = {
 export const posts = {
   // Obter todos os posts
   async getAllPosts(): Promise<Post[]> {
-    const token = localStorage.getItem('authToken');
-    
-    const response = await fetch(`${API_BASE_URL}/posts.php`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
-    });
-    
+    // Usar o proxy para evitar problemas de CORS
+    const response = await fetch(`http://localhost:8000/proxy.php?file=posts`);
     if (!response.ok) {
-      throw new Error('Erro ao obter posts');
+      throw new Error('Falha ao obter posts');
     }
-    
     return await response.json();
   },
   
   // Obter um post específico
   async getPost(id: string): Promise<Post> {
-    const token = localStorage.getItem('authToken');
-    
-    if (!token) {
-      throw new Error('Usuário não autenticado');
-    }
-    
-    const response = await fetch(`${API_BASE_URL}/posts.php?id=${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error('Erro ao obter post');
-    }
-    
+    const response = await fetchApi(`/posts/${id}`);
     return await response.json();
   },
   
   // Criar um novo post
   async createPost(title: string, content: string, image_url?: string): Promise<Post> {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     
     if (!token) {
       throw new Error('Usuário não autenticado');
     }
     
-    try {
-      // Criamos um objeto com tipagem correta
-      const postData: {
-        title: string;
-        content: string;
-        image_url?: string;
-      } = { 
-        title, 
-        content 
-      };
-      
-      // Só adicionamos image_url se ele existir
-      if (image_url) {
-        postData.image_url = image_url;
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/posts.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(postData),
-      });
-      
-      await handleApiError(response);
-      
-      const responseData = await response.json();
-      
-      return responseData;
-    } catch (error) {
-      console.error('Erro na requisição para criar post:', error);
-      throw error;
-    }
+    const response = await fetch(`${API_BASE_URL}/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ title, content, image_url })
+    });
+    
+    await handleApiError(response);
+    
+    return await response.json();
   },
   
   // Atualizar um post
   async updatePost(id: string, title: string, content: string, image_url?: string): Promise<Post> {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     
     if (!token) {
       throw new Error('Usuário não autenticado');
     }
     
-    const response = await fetch(`${API_BASE_URL}/posts.php?id=${id}`, {
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ title, content, image_url }),
     });
@@ -319,16 +321,16 @@ export const posts = {
   
   // Excluir um post
   async deletePost(id: string): Promise<{ message: string }> {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     
     if (!token) {
       throw new Error('Usuário não autenticado');
     }
     
-    const response = await fetch(`${API_BASE_URL}/posts.php?id=${id}`, {
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`
       },
     });
     
@@ -339,60 +341,63 @@ export const posts = {
   
   // Adicionar um comentário
   async addComment(postId: string, content: string): Promise<Comment> {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     
     if (!token) {
       throw new Error('Usuário não autenticado');
     }
     
-    const response = await fetchApi('/comments.php?action=create', {
+    const response = await fetch(`${API_BASE_URL}/comments`, {
       method: 'POST',
-      body: JSON.stringify({ postId, content }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ post_id: postId, content })
     });
     
-    if (!response.ok) {
-      throw new Error('Erro ao adicionar comentário');
-    }
+    await handleApiError(response);
     
     return await response.json();
   },
   
   // Excluir um comentário
   async deleteComment(id: string): Promise<{ message: string }> {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     
     if (!token) {
       throw new Error('Usuário não autenticado');
     }
     
-    const response = await fetchApi(`/comments.php?action=delete&id=${id}`, {
+    const response = await fetch(`${API_BASE_URL}/comments/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
     
-    if (!response.ok) {
-      throw new Error('Erro ao excluir comentário');
-    }
+    await handleApiError(response);
     
     return await response.json();
   },
   
   // Curtir/descurtir um post
   async toggleLike(postId: string): Promise<{ message: string }> {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     
     if (!token) {
       throw new Error('Usuário não autenticado');
     }
     
-    const response = await fetchApi(`/posts.php?action=toggleLike&id=${postId}`, {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}/like`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
     });
     
-    if (!response.ok) {
-      throw new Error('Erro ao curtir/descurtir post');
-    }
-   
-    
+    await handleApiError(response);
     
     return await response.json();
   }
@@ -400,178 +405,136 @@ export const posts = {
 
 // Funções para artigos
 export const articles = {
-  getAllArticles: async () => {
-    const response = await fetch(`${API_BASE_URL}/articles`);
-    return response.json();
+  // Obter todos os artigos (compatibilidade)
+  async getAllArticles(): Promise<any[]> {
+    return this.getAll();
   },
 
-  getAll: async (category?: string, tag?: string) => {
-    const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (tag) params.append('tag', tag);
+  // Obter um artigo específico
+  async getArticle(id: string): Promise<any> {
+    const response = await fetchApi(`/articles/${id}`);
+    return await response.json();
+  },
+  
+  // Obter todos os artigos
+  async getAll(category?: string, tag?: string): Promise<any[]> {
+    let url = '/articles';
+    const params = [];
     
-    const response = await fetch(`${API_BASE_URL}/articles?${params.toString()}`);
-    return response.json();
-  },
-
-  createArticle: async (title: string, content: string, image_url?: string, 
-                       category?: string, tags?: string[]) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
+    if (category) params.push(`category=${encodeURIComponent(category)}`);
+    if (tag) params.push(`tag=${encodeURIComponent(tag)}`);
+    
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
     }
 
+    const response = await fetchApi(url);
+    return await response.json();
+  },
+
+  async createArticle(title: string, content: string, image_url?: string, category?: string, tags?: string[]): Promise<any> {
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('Usuário não autenticado');
+    }
+    
     const response = await fetch(`${API_BASE_URL}/articles`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        title,
-        content,
-        image_url,
-        category,
-        tags
-      })
+      body: JSON.stringify({ title, content, image_url, category, tags })
     });
-    return response.json();
+    
+    await handleApiError(response);
+    return await response.json();
   },
 
-  create: async (articleData: any) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
+  async updateArticle(id: string, title: string, content: string, image_url?: string, category?: string, tags?: string[]): Promise<any> {
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('Usuário não autenticado');
     }
-
-    const response = await fetch(`${API_BASE_URL}/articles`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify(articleData)
-    });
-    return response.json();
-  },
-
-  updateArticle: async (id: string, title: string, content: string, image_url?: string, 
-                       category?: string, tags?: string[]) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
-    }
-
-    const response = await fetch(`${API_BASE_URL}/articles?id=${id}`, {
+    
+    const response = await fetch(`${API_BASE_URL}/articles/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        title,
-        content,
-        image_url,
-        category,
-        tags
-      })
+      body: JSON.stringify({ title, content, image_url, category, tags })
     });
-    return response.json();
+    
+    await handleApiError(response);
+    return await response.json();
   },
 
-  update: async (id: string, articleData: any) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
+  async deleteArticle(id: string): Promise<any> {
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('Usuário não autenticado');
     }
-
-    const response = await fetch(`${API_BASE_URL}/articles?id=${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify(articleData)
-    });
-    return response.json();
-  },
-
-  deleteArticle: async (id: string) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
-    }
-
-    const response = await fetch(`${API_BASE_URL}/articles?id=${id}`, {
+    
+    const response = await fetch(`${API_BASE_URL}/articles/${id}`, {
       method: 'DELETE',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
-    return response.json();
+    
+    await handleApiError(response);
+    return await response.json();
   },
 
-  delete: async (id: string) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
+  async addComment(articleId: string, content: string): Promise<any> {
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('Usuário não autenticado');
     }
-
-    const response = await fetch(`${API_BASE_URL}/articles?id=${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      }
-    });
-    return response.json();
-  },
-
-  addComment: async (articleId: string, content: string) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
-    }
-
+    
     const response = await fetch(`${API_BASE_URL}/articles/${articleId}/comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ content })
     });
     return response.json();
   },
 
-  deleteComment: async (commentId: string) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
+  async deleteComment(commentId: string): Promise<any> {
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('Usuário não autenticado');
     }
-
-    const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
+    
+    const response = await fetch(`${API_BASE_URL}/articles/comments/${commentId}`, {
       method: 'DELETE',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
     return response.json();
   },
 
-  toggleLike: async (articleId: string) => {
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      throw new Error('Não autenticado');
+  async toggleLike(articleId: string): Promise<any> {
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('Usuário não autenticado');
     }
-
-    const response = await fetch(`${API_BASE_URL}/articles/${articleId}/likes`, {
-      method: 'POST',
+    
+    const response = await fetch(`${API_BASE_URL}/articles/${articleId}/like`, {
+      method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
     return response.json();

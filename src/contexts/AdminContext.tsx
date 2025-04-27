@@ -29,7 +29,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/admin-members.php`);
+        const response = await fetch(`http://localhost:8000/proxy.php?file=admin-members`);
         if (response.ok) {
           const data = await response.json();
           setMembers(data);

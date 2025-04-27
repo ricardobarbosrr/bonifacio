@@ -2,6 +2,7 @@
  * Utilitários para manipulação de fotos de perfil locais
  */
 import { generateAvatarSvg } from './avatarUtils';
+import { getLocalPlaceholder } from './localPlaceholder';
 
 /**
  * Converte um arquivo de imagem para base64 para exibição local
@@ -41,7 +42,7 @@ export const resolveProfilePhotoUrl = (photoURL: string | null | undefined, user
     if (username) {
       return generateAvatarSvg(username, size);
     }
-    return 'https://via.placeholder.com/128x128';
+    return getLocalPlaceholder();
   }
   
   // Se for uma URL local, recupera do localStorage
@@ -55,7 +56,7 @@ export const resolveProfilePhotoUrl = (photoURL: string | null | undefined, user
     if (username) {
       return generateAvatarSvg(username, size);
     }
-    return 'https://via.placeholder.com/128x128';
+    return getLocalPlaceholder();
   }
   
   // Se for uma URL HTTP, retorna direto
@@ -64,7 +65,7 @@ export const resolveProfilePhotoUrl = (photoURL: string | null | undefined, user
   }
   
   // Se for um caminho relativo, adiciona o prefixo de base
-  return photoURL || 'https://via.placeholder.com/128x128';
+  return photoURL || getLocalPlaceholder();
 };
 
 /**

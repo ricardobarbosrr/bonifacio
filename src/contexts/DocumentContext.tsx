@@ -30,7 +30,7 @@ export const DocumentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/documents.php`, {
+      const response = await fetch(`http://localhost:8000/proxy.php?file=documents`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },

@@ -254,7 +254,7 @@ const PostList: React.FC = () => {
                     } transition-colors`}
                   >
                     <FaComment className="mr-1" />
-                    {post.comments.length} Comentário{post.comments.length !== 1 ? 's' : ''}
+                    {post.comments?.length || 0} Comentário{(post.comments?.length || 0) !== 1 ? 's' : ''}
                   </button>
                   
                   <button

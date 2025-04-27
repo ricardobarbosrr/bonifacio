@@ -1,0 +1,20 @@
+[
+    {
+        "id": "e2b77f69ee234c87",
+        "post_id": "a399734706662345",
+        "user_id": "b0d9ea2b432cedef",
+        "created_at": "2025-04-27 18:20:49"
+    },
+    {
+        "id": "5ea6e27879d033e3",
+        "article_id": "9a1d9dc2f4cbb610",
+        "user_id": "b0d9ea2b432cedef",
+        "created_at": "2025-04-27 18:24:51"
+    },
+    {
+        "id": "ecc0cce632db8d6c",
+        "post_id": "post1",
+        "user_id": "b0d9ea2b432cedef",
+        "created_at": "2025-04-27 21:00:12"
+    }
+]

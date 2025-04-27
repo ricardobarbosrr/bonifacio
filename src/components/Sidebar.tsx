@@ -12,9 +12,13 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const unreadCount = announcements.filter(a => 
-    !a.readBy.includes(currentUser?.uid || '')
-  ).length;
+  // Verificar se a propriedade readBy existe e usar verificação segura para evitar erros
+  const unreadCount = announcements.filter(a => {
+    // Garantir que readBy existe e é um array
+    const readBy = a.readBy || [];
+    // Verificar se o usuário atual não leu o anúncio
+    return !readBy.includes(currentUser?.uid || '');
+  }).length;
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);

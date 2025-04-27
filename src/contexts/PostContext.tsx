@@ -53,7 +53,17 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshPosts = async () => {
     try {
       const postsData = await postsAPI.getAllPosts();
-      setPosts(postsData);
+      
+      // Normalizar os dados para garantir que todas as propriedades esperadas existam
+      const normalizedPosts = postsData.map((post: any) => ({
+        ...post,
+        // Garantir que comments sempre seja um array
+        comments: Array.isArray(post.comments) ? post.comments : [],
+        // Garantir que likes sempre seja um array
+        likes: Array.isArray(post.likes) ? post.likes : []
+      }));
+      
+      setPosts(normalizedPosts);
     } catch (error) {
       console.error('Erro ao carregar posts:', error);
     }
